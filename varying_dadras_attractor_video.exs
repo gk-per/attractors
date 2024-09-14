@@ -40,7 +40,7 @@ defmodule VaryingDadrasAttractor do
     c_values
     |> Enum.with_index(1)
     |> Task.async_stream(fn {c, frame} ->
-      points = simulate(num_points, dt, c)
+      points = simulate(num_points, dt, c) ++ simulate(num_points, dt, 0.3)
       plot_frame(points, frame, c, length(c_values))
     end, ordered: false, max_concurrency: System.schedulers_online())
     |> Stream.run()
@@ -68,29 +68,33 @@ defmodule VaryingDadrasAttractor do
   def plot_frame(points, frame, c, total_frames) do
     File.write!("lorenz_data_#{frame}.dat", format_points(points))
 
-      gnuplot_commands = """
-      set term pngcairo size 1920,1080 font "Arial,12" enhanced background rgb 'black'
-      set output 'frames/test_#{String.pad_leading(Integer.to_string(frame), 3, "0")}.png'
-      set encoding utf8
-      unset border
-      unset tics
-      unset xlabel
-      unset ylabel
-      unset zlabel
-      set title "Dadras Attractor (a = #{nround(c)})" textcolor rgb 'white'
-      set view 22, 0, 1.2, 1.2
-      set samples 10000
-      set isosamples 100
-      set hidden3d
-      splot 'lorenz_data_#{frame}.dat' every ::1000 with lines lc rgb '#cd1c18' lw 2.5 notitle
-      """
+    # Calculate the current rotation angle
+    rot_x = 360 * (frame - 1) / (total_frames - 1)
+    rot_z = 360 * (frame - 1) / (total_frames - 1)
 
-      File.write!("plot_commands_#{frame}.gp", gnuplot_commands)
-      System.cmd("gnuplot", ["plot_commands_#{frame}.gp"])
-      File.rm("lorenz_data_#{frame}.dat")
-      File.rm("plot_commands_#{frame}.gp")
-      IO.puts("Generated frame #{frame}/#{total_frames} (c = #{nround(c)})")
-    end
+    gnuplot_commands = """
+    set term pngcairo size 1920,1080 font "Arial,12" enhanced background rgb 'black'
+    set output 'frames/test_#{String.pad_leading(Integer.to_string(frame), 3, "0")}.png'
+    set encoding utf8
+    unset border
+    unset tics
+    unset xlabel
+    unset ylabel
+    unset zlabel
+    unset title
+    set view #{rot_x}, #{rot_z}, 1.2, 1.2
+    set samples 10000
+    set isosamples 100
+    set hidden3d
+    splot 'lorenz_data_#{frame}.dat' every ::1000 with lines lc rgb '#42f566' lw 2.5 notitle
+    """
+
+    File.write!("plot_commands_#{frame}.gp", gnuplot_commands)
+    System.cmd("gnuplot", ["plot_commands_#{frame}.gp"])
+    File.rm("lorenz_data_#{frame}.dat")
+    File.rm("plot_commands_#{frame}.gp")
+    IO.puts("Generated frame #{frame}/#{total_frames} (c = #{nround(c)}, rot_x = #{nround(rot_x)})")
+  end
 
   defp format_points(points) do
     points
