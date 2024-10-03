@@ -1,161 +1,85 @@
-defmodule LangfordAttractor do
-  @a 0.95
-  @b 0.7
-  @c 0.6
-  @d 3.5
-  @e 0.25
-  @f 0.1
+module LangfordAttractor = struct
+  let a = 0.95
+  let b = 0.7
+  let c = 0.6
+  let d = 3.5
+  let e = 0.25
+  let f = 0.1
 
-  def simulate(num_points, dt) do
-    initial_state = {1.0, 1.0, 1.0}
-    states = Stream.iterate(initial_state, &next_state(&1, dt))
-    Enum.take(states, num_points)
-  end
+  type state = float * float * float
 
-  defp next_state({x, y, z}, dt) do
-    dx = (z - @b) * x - @d * y
-    dy = @d * x + (z - @b) * y
-    dz = @c + @a * z - z ** 3 / 3 - (x ** 2 + y ** 2) * (1 + @e * z) + @f * z * x ** 3
+  let next_state ((x, y, z) : state) dt =
+    let dx = (z -. b) *. x -. d *. y in
+    let dy = d *. x +. (z -. b) *. y in
+    let dz = c +. a *. z -. z ** 3. /. 3. -. (x ** 2. +. y ** 2.) *. (1. +. e *. z) +. f *. z *. x ** 3. in
+    (x +. dx *. dt, y +. dy *. dt, z +. dz *. dt)
 
-    {
-      x + dx * dt,
-      y + dy * dt,
-      z + dz * dt
-    }
-  end
+  let simulate num_points dt =
+    let initial_state = (1.0, 1.0, 1.0) in
+    let rec aux n state acc =
+      if n = 0 then List.rev acc
+      else
+        let next = next_state state dt in
+        aux (n - 1) next (next :: acc)
+    in
+    aux num_points initial_state []
 
-  def plot_tracing_particle(points, num_frames) do
-    File.write!("lorenz_data.dat", format_points(points))
+  let format_points points =
+    let format_point (x, y, z) =
+      Printf.sprintf "%f %f %f\n" x y z
+    in
+    String.concat "" (List.map format_point points)
 
-    color_cycle = 96.0
-    color1 = "#0000FF"  # Blue
-    color2 = "#FF0000"  # Red
+  let write_data_file points filename =
+    let oc = open_out filename in
+    output_string oc (format_points points);
+    close_out oc
 
-    1..num_frames
-    |> Task.async_stream(
-      fn frame ->
-        angle = rem(360 * frame, 447 * 360) / 447
-        # Determine which color to use
-        color = if rem(frame, round(color_cycle * 2)) < color_cycle, do: color1, else: color2
+  let generate_gnuplot_commands frame num_frames =
+    let angle = float_of_int (360 * frame mod (447 * 360)) /. 447. in
+    let color_cycle = 96.0 in
+    let color = if float_of_int frame mod (color_cycle *. 2.) < color_cycle then "#0000FF" else "#FF0000" in
+    Printf.sprintf "
+set term pngcairo size 1920,1080 font \"Arial,12\" enhanced background rgb 'black'
+set output 'frames/langford_frame_%03d.png'
+set encoding utf8
+unset border
+unset tics
+unset xlabel
+unset ylabel
+unset zlabel
+unset title
+unset colorbox
+set view 90, %f, 1.2, 1.2
+set samples 10000
+set isosamples 100
+set hidden3d
+set palette defined (0 '%s', 1 '%s')
+splot 'lorenz_data.dat' with lines lc palette z notitle
+" frame angle color color
 
-        gnuplot_commands = """
-        set term pngcairo size 1920,1080 font "Arial,12" enhanced background rgb 'black'
-        set output 'frames/langford_frame_exp_#{String.pad_leading(Integer.to_string(frame), 3, "0")}.png'
-        set encoding utf8
-        unset border
-        unset tics
-        unset xlabel
-        unset ylabel
-        unset zlabel
-        unset title
-        unset colorbox
-        set view 90, #{angle}, 1.2, 1.2
-        set samples 10000
-        set isosamples 100
-        set hidden3d
-        set palette defined (0 '#{color}', 1 '#{color}')
-        splot 'lorenz_data.dat' with lines lc palette z notitle
-        """
-
-        File.write!("plot_commands_#{frame}.gp", gnuplot_commands)
-        System.cmd("gnuplot", ["plot_commands_#{frame}.gp"])
-        File.rm("plot_commands_#{frame}.gp")
-        IO.puts("Generated frame #{frame}/#{num_frames}")
-      end,
-      max_concurrency: System.schedulers_online() * 2
-    )
-    |> Stream.run()
-  end
-
-  # def plot_tracing_particle(points, num_frames) do
-  #   File.write!("lorenz_data.dat", format_points(points))
-
-  #   1..num_frames
-  #   |> Task.async_stream(
-  #     fn frame ->
-  #       angle = 360 * frame / num_frames
-  #       gnuplot_commands = """
-  #       set term pngcairo size 1920,1080 font "Arial,12" enhanced background rgb 'black'
-  #       set output 'frames/langford_frame_exp_#{String.pad_leading(Integer.to_string(frame), 3, "0")}.png'
-  #       set encoding utf8
-  #       unset border
-  #       unset tics
-  #       unset xlabel
-  #       unset ylabel
-  #       unset zlabel
-  #       unset title
-  #       unset colorbox
-  #       set view 90, #{angle}, 1.2, 1.2
-  #       set samples 10000
-  #       set isosamples 100
-  #       set hidden3d
-  #       set palette defined (0 'red', 1 'green')
-  #       splot 'lorenz_data.dat' with lines lc palette z notitle
-  #       """
-
-  #       File.write!("plot_commands_#{frame}.gp", gnuplot_commands)
-  #       System.cmd("gnuplot", ["plot_commands_#{frame}.gp"])
-  #       File.rm("plot_commands_#{frame}.gp")
-  #       IO.puts("Generated frame #{frame}/#{num_frames}")
-  #     end,
-  #     max_concurrency: System.schedulers_online() * 2
-  #   )
-  #   |> Stream.run()
-  # end
-
-  # def plot_tracing_particle(points, num_frames) do
-  #   File.write!("lorenz_data.dat", format_points(points))
-
-  #   1..num_frames
-  #   |> Enum.each(fn frame ->
-  #     points_to_plot = div(length(points) * frame, num_frames)
-
-  #     gnuplot_commands = """
-  #     set term pngcairo size 1920,1080 font "Arial,12" enhanced background rgb 'black'
-  #     set output 'frames/langford_frame_exp_#{String.pad_leading(Integer.to_string(frame), 3, "0")}.png'
-  #     set encoding utf8
-  #     unset border
-  #     unset tics
-  #     unset xlabel
-  #     unset ylabel
-  #     unset zlabel
-  #     unset title
-  #     unset colorbox
-  #     set view 90, 30, 1.2, 1.2
-  #     set samples 10000
-  #     set isosamples 100
-  #     set hidden3d
-  #     set palette defined (0 'grey', 1 'white')
-  #     splot 'lorenz_data.dat' every ::1::#{points_to_plot} with lines lc palette z notitle
-  #     """
-
-  #     File.write!("plot_commands.gp", gnuplot_commands)
-  #     System.cmd("gnuplot", ["plot_commands.gp"])
-  #     IO.puts("Generated frame #{frame}/#{num_frames}")
-  #   end)
-  # end
-
-  defp format_points(points) do
-    points
-    |> Enum.map(fn {x, y, z} -> "#{x} #{y} #{z}\n" end)
-    |> Enum.join()
-  end
+  let plot_tracing_particle points num_frames =
+    write_data_file points "lorenz_data.dat";
+    for frame = 1 to num_frames do
+      let commands = generate_gnuplot_commands frame num_frames in
+      let filename = Printf.sprintf "plot_commands_%d.gp" frame in
+      let oc = open_out filename in
+      output_string oc commands;
+      close_out oc;
+      ignore (Sys.command (Printf.sprintf "gnuplot %s" filename));
+      Sys.remove filename;
+      Printf.printf "Generated frame %d/%d\n" frame num_frames
+    done
 end
 
-# Usage
-# Increased number of points for smoother curve
-num_points = 30000
-# Smaller time step for more detailed simulation
-dt = 0.005
-# Increased number of frames for smoother rotation
-num_frames = 5664
+let () =
+  let num_points = 30000 in
+  let dt = 0.005 in
+  let num_frames = 5664 in
 
-points = LangfordAttractor.simulate(num_points, dt)
-LangfordAttractor.plot_tracing_particle(points, num_frames)
+  let points = LangfordAttractor.simulate num_points dt in
+  LangfordAttractor.plot_tracing_particle points num_frames;
 
-IO.puts("Generated #{num_frames} high-quality frames for rotating Langford attractor animation.")
-IO.puts("Use FFmpeg to create a high-quality MP4 with:")
-
-IO.puts(
-  "ffmpeg -framerate 30 -i langford_frame_%03d.png -c:v libx264 -preset slow -crf 17 -pix_fmt yuv420p lorenz_rotating_hq.mp4"
-)
+  Printf.printf "Generated %d high-quality frames for rotating Langford attractor animation.\n" num_frames;
+  Printf.printf "Use FFmpeg to create a high-quality MP4 with:\n";
+  Printf.printf "ffmpeg -framerate 30 -i langford_frame_%%03d.png -c:v libx264 -preset slow -crf 17 -pix_fmt yuv420p lorenz_rotating_hq.mp4\n"

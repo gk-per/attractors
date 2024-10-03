@@ -61,38 +61,6 @@ defmodule LangfordAttractor do
     |> Stream.run()
   end
 
-  # def plot_tracing_particle(points, num_frames) do
-  #   File.write!("lorenz_data.dat", format_points(points))
-
-  #   1..num_frames
-  #   |> Enum.each(fn frame ->
-  #     points_to_plot = div(length(points) * frame, num_frames)
-
-  #     gnuplot_commands = """
-  #     set term pngcairo size 1920,1080 font "Arial,12" enhanced background rgb 'black'
-  #     set output 'frames/langford_frame_exp_#{String.pad_leading(Integer.to_string(frame), 3, "0")}.png'
-  #     set encoding utf8
-  #     unset border
-  #     unset tics
-  #     unset xlabel
-  #     unset ylabel
-  #     unset zlabel
-  #     unset title
-  #     unset colorbox
-  #     set view 90, 30, 1.2, 1.2
-  #     set samples 10000
-  #     set isosamples 100
-  #     set hidden3d
-  #     set palette defined (0 'grey', 1 'white')
-  #     splot 'lorenz_data.dat' every ::1::#{points_to_plot} with lines lc palette z notitle
-  #     """
-
-  #     File.write!("plot_commands.gp", gnuplot_commands)
-  #     System.cmd("gnuplot", ["plot_commands.gp"])
-  #     IO.puts("Generated frame #{frame}/#{num_frames}")
-  #   end)
-  # end
-
   defp format_points(points) do
     points
     |> Enum.map(fn {x, y, z} -> "#{x} #{y} #{z}\n" end)

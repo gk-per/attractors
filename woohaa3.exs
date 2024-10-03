@@ -46,6 +46,7 @@ defmodule LangfordAttractor do
     |> Task.async_stream(
       fn frame ->
         angle = rem(360 * frame, 447 * 360) / 447
+        points_to_plot = div(length(points) * frame, num_frames)
 
         color = get_color_for_frame(frame, transitions)
 
@@ -65,7 +66,7 @@ defmodule LangfordAttractor do
         set isosamples 100
         set hidden3d
         set palette defined (0 '#{color}', 1 '#{color}')
-        splot 'lorenz_data.dat' with lines lc palette z notitle
+        splot 'lorenz_data.dat' every ::1::#{points_to_plot} with lines lc palette z notitle
         """
 
         File.write!("plot_commands_#{frame}.gp", gnuplot_commands)
