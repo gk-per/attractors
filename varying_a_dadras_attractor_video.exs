@@ -39,10 +39,14 @@ defmodule VaryingDadrasAttractor do
 
     c_values
     |> Enum.with_index(1)
-    |> Task.async_stream(fn {c, frame} ->
-      points = simulate(num_points, dt, c) ++ simulate(num_points, dt, 0.3)
-      plot_frame(points, frame, c, length(c_values))
-    end, ordered: false, max_concurrency: System.schedulers_online())
+    |> Task.async_stream(
+      fn {c, frame} ->
+        points = simulate(num_points, dt, c) ++ simulate(num_points, dt, 0.3)
+        plot_frame(points, frame, c, length(c_values))
+      end,
+      ordered: false,
+      max_concurrency: System.schedulers_online()
+    )
     |> Stream.run()
   end
 
@@ -93,7 +97,10 @@ defmodule VaryingDadrasAttractor do
     System.cmd("gnuplot", ["plot_commands_#{frame}.gp"])
     File.rm("lorenz_data_#{frame}.dat")
     File.rm("plot_commands_#{frame}.gp")
-    IO.puts("Generated frame #{frame}/#{total_frames} (c = #{nround(c)}, rot_x = #{nround(rot_x)})")
+
+    IO.puts(
+      "Generated frame #{frame}/#{total_frames} (c = #{nround(c)}, rot_x = #{nround(rot_x)})"
+    )
   end
 
   defp format_points(points) do
@@ -112,4 +119,7 @@ VaryingDadrasAttractor.plot_varying_c(num_points, dt)
 total_frames = length(VaryingDadrasAttractor.generate_complex_c_sequence())
 IO.puts("Generated #{total_frames} high-quality frames for rotating Dadras attractor animation.")
 IO.puts("Use FFmpeg to create a high-quality MP4 with:")
-IO.puts("ffmpeg -framerate 30 -i dadras_frame_%03d.png -c:v libx264 -preset slow -crf 17 -pix_fmt yuv420p lorenz_rotating_hq.mp4")
+
+IO.puts(
+  "ffmpeg -framerate 30 -i dadras_frame_%03d.png -c:v libx264 -preset slow -crf 17 -pix_fmt yuv420p lorenz_rotating_hq.mp4"
+)
