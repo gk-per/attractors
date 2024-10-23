@@ -35,10 +35,10 @@ defmodule StrangeAttractor.Lorenz83 do
         zoom =
           if frame <= num_frames / 2 do
             # Zoom in for the first half
-            1.25 + 9.875 * frame / (num_frames / 2)
+            1.25 + 9.75 * frame / (num_frames / 2)
           else
             # Zoom out for the second half
-            10 - 9.875 * (frame - num_frames / 2) / (num_frames / 2)
+            10 - 9.75 * (frame - num_frames / 2) / (num_frames / 2)
           end
 
         angle = 360 * frame / num_frames
